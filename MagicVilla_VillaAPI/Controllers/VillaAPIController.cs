@@ -1,5 +1,6 @@
 ﻿using MagicVilla_VillaAPI.Data;
 using MagicVilla_VillaAPI.Models;
+using MagicVilla_VillaAPI.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -10,17 +11,18 @@ namespace MagicVilla_VillaAPI.Controllers
     [ApiController]
     public class VillaApiController : ControllerBase
     {
+        private readonly IVillaService _villaService;
 
-        public VillaApiController()
+        public VillaApiController(IVillaService villaService)
         {
-
+            _villaService = villaService;
         }
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Villa>))]
         public ActionResult<IEnumerable<Villa>> GetVillas()
         {
-            return Ok(VillaStore.villaList);
+            return Ok(_villaService.Get());
         }
 
         [HttpGet("{id}", Name = "GetVilla")]
@@ -34,13 +36,15 @@ namespace MagicVilla_VillaAPI.Controllers
                 return BadRequest();
             }
 
-            var villa = VillaStore.villaList.FirstOrDefault(v => v.Id == id);
-            if (villa == null)
+            try
+            {
+                var villa = _villaService.Get(id);
+                return Ok(villa);
+            }
+            catch (Exception)
             {
                 return NotFound();
             }
-
-            return Ok(villa);
         }
 
         [HttpPost]
@@ -49,7 +53,7 @@ namespace MagicVilla_VillaAPI.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<Villa> CreateVilla([FromBody] Villa villa)
         {
-            if (VillaStore.villaList.Any(v => v.Name.ToLower() == villa.Name.ToLower()))
+            if (_villaService.Get().Any(v => v.Name.ToLower() == villa.Name.ToLower()))
             {
                 ModelState.AddModelError("", $"Villa {villa.Name} already exists");
                 return StatusCode(StatusCodes.Status400BadRequest, ModelState);
@@ -60,12 +64,7 @@ namespace MagicVilla_VillaAPI.Controllers
                 return BadRequest(villa);
             }
 
-            if (string.IsNullOrEmpty(villa.Id))
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError);
-            }
-
-            VillaStore.villaList.Add(villa);
+            _villaService.Create(villa);
             return CreatedAtRoute("GetVilla", new { id = villa.Id }, villa);
         }
 
@@ -77,14 +76,16 @@ namespace MagicVilla_VillaAPI.Controllers
                 return BadRequest();
             }
 
-            var villa = VillaStore.villaList.FirstOrDefault(v => v.Id == id);
-            if (villa == null)
+            try
+            {
+                var villa = _villaService.Get(id);
+                _villaService.Remove(villa);
+                return NoContent();
+            }
+            catch (Exception)
             {
                 return NotFound();
             }
-
-            VillaStore.villaList.Remove(villa);
-            return NoContent();
         }
 
         [HttpPut("{id}", Name = "UpdateVilla")]
@@ -98,16 +99,19 @@ namespace MagicVilla_VillaAPI.Controllers
                 return BadRequest();
             }
 
-            var v = VillaStore.villaList.FirstOrDefault(v => v.Id == id);
-            if (v == null)
+            try
+            {
+                var v = _villaService.Get(id);
+                v.Name = villa.Name;
+                v.Occupancy = villa.Occupancy;
+                v.Sqft = villa.Sqft;
+                _villaService.Update(v.Id, villa);
+                return NoContent();
+            }
+            catch (Exception)
             {
                 return NotFound();
             }
-
-            v.Name = villa.Name;
-            v.Occupancy = villa.Occupancy;
-            v.Sqft = villa.Sqft;
-            return NoContent();
         }
 
         [HttpPatch("{id}", Name = "UpdatePartialVilla")]
@@ -116,24 +120,23 @@ namespace MagicVilla_VillaAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult UpdatePartialVilla(string id, [FromBody] JsonPatchDocument<Villa> patchDoc)
         {
-            if (patchDoc == null)
+            try
             {
-                return BadRequest();
-            }
+                var villa = _villaService.Get(id);
+                patchDoc.ApplyTo(villa, ModelState);
+                _villaService.Update(villa.Id, villa);
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
 
-            var villa = VillaStore.villaList.FirstOrDefault(v => v.Id == id);
-            if (villa == null)
+                return NoContent();
+            }
+            catch (Exception)
             {
                 return NotFound();
             }
-
-            patchDoc.ApplyTo(villa, ModelState);
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            return NoContent();
+            
         }
     }
 }
