@@ -1,5 +1,5 @@
-﻿using MagicVilla_VillaAPI.Data;
-using MagicVilla_VillaAPI.Logging;
+﻿
+using MagicVilla_VillaAPI.Data;
 using MagicVilla_VillaAPI.Models.Dto;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
@@ -11,30 +11,27 @@ namespace MagicVilla_VillaAPI.Controllers
     [ApiController]
     public class VillaAPIController : ControllerBase
     {
-        private readonly ILogging _logger;
 
-        public VillaAPIController(ILogging logger)
+        public VillaAPIController()
         {
-            this._logger = logger;
+
         }
 
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<VillaDTO>))]
-        public ActionResult<IEnumerable<VillaDTO>> GetVillas()
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Villa>))]
+        public ActionResult<IEnumerable<Villa>> GetVillas()
         {
-            _logger.Log("Getting list of villas","");
             return Ok(VillaStore.villaList);
         }
 
         [HttpGet("{id:int}", Name = "GetVilla")]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VillaDTO))]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Villa))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public ActionResult<VillaDTO> GetVilla(int id)
+        public ActionResult<Villa> GetVilla(int id)
         {
             if (id == 0)
             {
-                _logger.Log("Villa Id cannot be 0","error");
                 return BadRequest();
             }
 
@@ -48,10 +45,10 @@ namespace MagicVilla_VillaAPI.Controllers
         }
 
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(VillaDTO))]
+        [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(Villa))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<VillaDTO> CreateVilla([FromBody] VillaDTO villa)
+        public ActionResult<Villa> CreateVilla([FromBody] Villa villa)
         {
             //if (!ModelState.IsValid)
             //{
@@ -100,22 +97,22 @@ namespace MagicVilla_VillaAPI.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult UpdateVilla(int id, [FromBody] VillaDTO villaDTO)
+        public IActionResult UpdateVilla(int id, [FromBody] Villa villa)
         {
-            if (villaDTO == null || id != villaDTO.Id)
+            if (villa == null || id != villa.Id)
             {
-                return BadRequest(villaDTO);
+                return BadRequest(villa);
             }
 
-            var villa = VillaStore.villaList.FirstOrDefault(v => v.Id == id);
-            if (villa == null)
+            var v = VillaStore.villaList.FirstOrDefault(v => v.Id == id);
+            if (v == null)
             {
                 return NotFound();
             }
 
-            villa.Name = villaDTO.Name;
-            villa.Occupancy = villaDTO.Occupancy;
-            villa.Sqft = villaDTO.Sqft;
+            v.Name = villa.Name;
+            v.Occupancy = villa.Occupancy;
+            v.Sqft = villa.Sqft;
             return NoContent();
         }
 
@@ -123,7 +120,7 @@ namespace MagicVilla_VillaAPI.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult UpdatePartialVilla(int id, [FromBody] JsonPatchDocument<VillaDTO> patchDoc)
+        public IActionResult UpdatePartialVilla(int id, [FromBody] JsonPatchDocument<Villa> patchDoc)
         {
             if (patchDoc == null)
             {
