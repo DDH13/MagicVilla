@@ -7,10 +7,10 @@ public class VillaService : IVillaService
 {
     private readonly IMongoCollection<Villa> _villas;
 
-    public VillaService(IVillaStoreDatabaseSettings settings, IMongoClient mongoClient)
+    public VillaService(IDatabaseSettings settings, IMongoClient mongoClient)
     {
         var database = mongoClient.GetDatabase(settings.DatabaseName);
-        _villas = database.GetCollection<Villa>(settings.VillaCollectionName);
+        _villas = database.GetCollection<Villa>("Villas");
     }
     public List<Villa> Get()
     {
